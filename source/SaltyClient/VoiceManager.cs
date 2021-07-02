@@ -18,6 +18,19 @@ namespace SaltyClient
         public float VoiceRange { get; private set; } = SharedData.VoiceRanges[1];
         public string RadioChannel { get; private set; }
 
+        private GameInstanceState _pluginState = GameInstanceState.NotInitiated;
+
+        public GameInstanceState pluginState
+        {
+            get => this._pluginState;
+            set
+            {
+                this._pluginState = value;
+
+                RAGE.Events.CallLocal(Event.SaltyChat_PluginStateChanged, (int)value);
+            }
+        }
+
         private RAGE.Ui.HtmlWindow _htmlWindow = default;
         private bool _isConnected { get; set; }
         private bool _isIngame { get; set; }
@@ -62,6 +75,8 @@ namespace SaltyClient
             RAGE.Events.Add(Event.SaltyChat_IsSending, this.OnPlayerIsSending);
             RAGE.Events.Add(Event.SaltyChat_IsSendingRelayed, this.OnPlayerIsSendingRelayed);
             RAGE.Events.Add(Event.SaltyChat_UpdateRadioTowers, this.OnUpdateRadioTowers);
+
+            RAGE.Events.Add(Event.SaltyChat_IsUsingMegaphone, this.OnIsUsingMegaphone);
 
             // Salty Chat Events
             RAGE.Events.Add("SaltyChat_OnConnected", this.OnPluginConnected);
@@ -386,6 +401,38 @@ namespace SaltyClient
         }
         #endregion
 
+        #region Events (Megaphone)
+
+        /// <summary>
+        /// Start using Megaphone
+        /// </summary>
+        /// <param name="args">args[0] - handle | args[1] - float | args[2] - bool</param>
+        private void OnIsUsingMegaphone(Object[] args)
+        {
+            ushort handle = Convert.ToUInt16(args[0]);
+            float range = String.IsNullOrEmpty((string)args[1]) ? (float)args[1] : SharedData.MegaphoneRange;
+            bool isSending = (bool)args[2];
+
+            Player player = Entities.Players.GetAtRemote(handle);
+
+            if (player == null || !this.TryGetVoiceClient(handle, out VoiceClient voiceClient))
+                return;
+
+            this.ExecuteCommand(
+                new PluginCommand(
+                    isSending ? Command.MegaphoneCommunicationUpdate : Command.StopMegaphoneCommunication,
+                    this.ServerUniqueIdentifier,
+                    new MegaphoneCommunication(
+                        voiceClient.TeamSpeakName,
+                        range
+                    )
+                )
+            );
+        }
+
+
+        #endregion
+
         #region Plugin Events
         /// <summary>
         /// Plugin connected to WebSocket
@@ -405,6 +452,7 @@ namespace SaltyClient
         public void OnPluginDisconnected(object[] args)
         {
             this._isConnected = false;
+            this.pluginState = GameInstanceState.NotInitiated;
 
             // need that weird lastTick workaround, because tick is the only event that isn't fired after a disconnect and we don't want to reconnect to the plugin
             if (this._lastTick.AddSeconds(1) > DateTime.Now)
@@ -449,6 +497,8 @@ namespace SaltyClient
 
                         this._isIngame = false;
 
+                        this.pluginState = GameInstanceState.NotInitiated;
+
                         this.InitiatePlugin();
 
                         break;
@@ -466,6 +516,9 @@ namespace SaltyClient
                         if (pluginCommand.TryGetPayload(out InstanceState instanceState))
                         {
                             this._isIngame = instanceState.IsReady;
+
+                            this.pluginState = instanceState.State;
+
                         }
 
                         break;
@@ -542,6 +595,8 @@ namespace SaltyClient
         {
             RAGE.Game.Pad.DisableControlAction(1, (int)RAGE.Game.Control.EnterCheatCode, true);
             RAGE.Game.Pad.DisableControlAction(1, (int)RAGE.Game.Control.PushToTalk, true);
+
+            if (this.pluginState != GameInstanceState.Ingame) return; 
 
             this._lastTick = DateTime.Now;
 
@@ -628,7 +683,7 @@ namespace SaltyClient
         /// </summary>
         private void InitiatePlugin()
         {
-            if (String.IsNullOrWhiteSpace(this.TeamSpeakName))
+            if (String.IsNullOrWhiteSpace(this.TeamSpeakName) || this.pluginState != GameInstanceState.NotInitiated)
                 return;
 
             this.ExecuteCommand(
@@ -743,6 +798,10 @@ namespace SaltyClient
 
             this._htmlWindow.ExecuteJs($"runCommand('{pluginCommand.Serialize()}')");
         }
+        #endregion
+
+        #region Exports (Misc)
+        internal int GetPluginState() => (int)this.pluginState;
         #endregion
     }
 }

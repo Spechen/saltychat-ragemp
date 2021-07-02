@@ -165,6 +165,16 @@ namespace SaltyClient
     {
         public bool IsConnectedToServer { get; set; }
         public bool IsReady { get; set; }
+        public GameInstanceState State { get; set; }
+    }
+
+    public enum GameInstanceState
+    {
+        NotInitiated = -1,
+        NotConnected = 0,
+        Connected = 1,
+        Ingame = 2,
+        InSwissChannel = 3,
     }
     #endregion
 
@@ -527,6 +537,39 @@ namespace SaltyClient
         /// </summary>
         UltraShortRange = 16,
     }
+    #endregion
+
+    #region Megaphone
+    /// <summary>
+    /// Used for <see cref="Command.MegaphoneCommunicationUpdate"/>
+    /// </summary>
+    public class MegaphoneCommunication
+    {
+        #region Properties
+        public string Name { get; set; }
+        public float Range { get; set; }
+        public float? Volume { get; set; }
+        #endregion
+
+        #region CTOR
+        public MegaphoneCommunication(string name, float range)
+        {
+            this.Name = name;
+            this.Range = range;
+        }
+        public MegaphoneCommunication(string name, float range, float volume)
+        {
+            this.Name = name;
+            this.Range = range;
+            this.Volume = volume;
+        }
+        #endregion
+
+        #region Conditional Property Serialization
+        public bool ShouldSerializeVolume() => this.Volume.HasValue;
+        #endregion
+    }
+
     #endregion
 
     #region Sound

@@ -14,6 +14,7 @@ namespace SaltyShared
         #endregion
 
         #region State Change
+        public const string SaltyChat_PluginStateChanged = "SaltyChat_PluginStateChanged";
         public const string SaltyChat_TalkStateChanged = "SaltyChat_TalkStateChanged";
         public const string SaltyChat_MicStateChanged = "SaltyChat_MicStateChanged";
         public const string SaltyChat_MicEnabledChanged = "SaltyChat_MicEnabledChanged";
@@ -44,7 +45,7 @@ namespace SaltyShared
         #endregion
 
         #region Megaphone
-        public const string SaltyChat_IsUsingMegaphone = "SaltyChat_IsUsingMegaphone ";
+        public const string SaltyChat_IsUsingMegaphone = "SaltyChat_IsUsingMegaphone";
         #endregion
     }
 }
